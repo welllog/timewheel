@@ -35,6 +35,8 @@ taskId := tw.AddCron(time.Second, func() {
 
 ##### remove task
 ```go
+// warning!!! No guarantee that removing a task multiple times will return the correct value
+// so it is better to remove it once if you need use the return value.
 // remove task and return Whether the task has been run
 tw.RemoveAndHasRun(taskId)
 // only remove task

@@ -79,6 +79,8 @@ func (tw *TimeWheel) Remove(id TaskId) {
 	}
 }
 
+// not idempotent, the second call may get the wrong return value
+// so it is better to remove it once if you need use the return value.
 func (tw *TimeWheel) RemoveAndHasRun(id TaskId) bool {
 	val, ok := tw.taskRecord.Load(id)
 	if ok {
@@ -188,13 +190,13 @@ func (tw *TimeWheel) scanAddRunTask(l *list.List) {
 		next := item.Next()
 		l.Remove(item)
 		item = next
-
-		if !obj.stop && obj.times != 0 {
-			tw.add(obj)
+		
+		if obj.times == 0 {
+			tw.collectTask(obj)
 			continue
 		}
-
-		tw.collectTask(obj)
+		
+		tw.add(obj)
 	}
 }
 
@@ -210,18 +212,24 @@ func (tw *TimeWheel) addTask(delay time.Duration, callback func(), times int32, 
 		obj = defaultTaskPool.get()
 		obj.pool = true
 	}
-	obj.id = tw.genUniqueID()
+	
 	obj.delay = delay
 	obj.times = times
 	obj.async = async
 	obj.callback = callback
-
-	tw.taskRecord.Store(obj.id, obj)
+	obj.id = tw.genUniqueID()
+	
 	tw.addTaskC <- obj
+	tw.taskRecord.Store(obj.id, obj)
+	
 	return obj.id
 }
 
 func (tw *TimeWheel) add(obj *task) {
+	if obj.stop {
+		tw.collectTask(obj)
+		return
+	}
 	pos, circle := tw.getPositionAndCircle(obj.delay)
 	obj.circle = circle
 

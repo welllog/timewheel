@@ -26,14 +26,20 @@ type task struct {
 
 func (t *task) Stop() (hasRun bool) {
 	t.mut.Lock()
+	if t.id == 0 {
+		// May be recycled, which means it has been run. also it recycled before run,
+		// this only occurs when stop is called multiple times.
+		t.mut.Unlock()
+		return true
+	}
 	t.stop = true
 	hasRun = t.run
 	t.mut.Unlock()
 	return
 }
 
-// Cannot be called concurrently with other functions
 func (t *task) Reset() {
+	t.mut.Lock()
 	t.id = 0
 	t.circle = 0
 	t.callback = nil
@@ -42,6 +48,7 @@ func (t *task) Reset() {
 	t.pool = false
 	t.stop = false
 	t.run = false
+	t.mut.Unlock()
 }
 
 // Cannot be called concurrently
