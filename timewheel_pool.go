@@ -1,7 +1,6 @@
 package timewheel
 
 import (
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -9,7 +8,6 @@ import (
 type TimeWheelPool struct {
 	incr uint64
 	size uint64
-	mut  sync.Mutex
 	pool []*TimeWheel
 }
 
