@@ -75,7 +75,7 @@ func (tw *TimeWheel) Remove(id TaskId) {
 	val, ok := tw.taskRecord.Load(id)
 	if ok {
 		obj := val.(*task)
-		obj.Stop()
+		obj.Stop(id)
 	}
 }
 
@@ -85,7 +85,7 @@ func (tw *TimeWheel) RemoveAndHasRun(id TaskId) bool {
 	val, ok := tw.taskRecord.Load(id)
 	if ok {
 		obj := val.(*task)
-		return obj.Stop()
+		return obj.Stop(id)
 	}
 	return true
 }
@@ -102,14 +102,14 @@ func (tw *TimeWheel) NewTimer(d time.Duration) *Timer {
 }
 
 func (tw *TimeWheel) NewTicker(d time.Duration) *Ticker {
-	c := make(chan struct{}, 1)
+	c := make(chan struct{})
 	stop := make(chan struct{})
 	id := tw.addTask(d, func() {
 		select {
 		case c <- struct{}{}:
 		case <-stop:
 		}
-	}, timesUnlimit, true)
+	}, timesUnlimit, false)
 	return &Ticker{
 		C:      c,
 		stop:   stop,
@@ -181,8 +181,9 @@ func (tw *TimeWheel) scanAddRunTask(l *list.List) {
 
 	for item := l.Front(); item != nil; {
 		obj := item.Value.(*task)
+		status := obj.PrepareRun()
 
-		if !obj.Run() {
+		if status.IsSkip() {
 			item = item.Next()
 			continue
 		}
@@ -190,13 +191,30 @@ func (tw *TimeWheel) scanAddRunTask(l *list.List) {
 		next := item.Next()
 		l.Remove(item)
 		item = next
-		
-		if obj.times == 0 {
+
+		if status.IsStop() {
 			tw.collectTask(obj)
 			continue
 		}
-		
-		tw.add(obj)
+
+		if obj.async {
+			go obj.callback()
+			if status.IsRunAgain() {
+				tw.add(obj)
+			} else {
+				tw.collectTask(obj)
+			}
+		} else {
+			if status.IsRunAgain() {
+				go func() {
+					obj.callback()
+					tw.addRepeatTask(obj)
+				}()
+			} else {
+				go obj.callback()
+				tw.collectTask(obj)
+			}
+		}
 	}
 }
 
@@ -212,24 +230,24 @@ func (tw *TimeWheel) addTask(delay time.Duration, callback func(), times int32, 
 		obj = defaultTaskPool.get()
 		obj.pool = true
 	}
-	
+
 	obj.delay = delay
 	obj.times = times
 	obj.async = async
 	obj.callback = callback
 	obj.id = tw.genUniqueID()
-	
+
 	tw.addTaskC <- obj
 	tw.taskRecord.Store(obj.id, obj)
-	
+
 	return obj.id
 }
 
+func (tw *TimeWheel) addRepeatTask(obj *task) {
+	tw.addTaskC <- obj
+}
+
 func (tw *TimeWheel) add(obj *task) {
-	if obj.stop {
-		tw.collectTask(obj)
-		return
-	}
 	pos, circle := tw.getPositionAndCircle(obj.delay)
 	obj.circle = circle
 

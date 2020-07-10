@@ -9,6 +9,31 @@ const (
 	timesUnlimit = int32(-1)
 )
 
+type TaskStatus uint8
+
+func (s TaskStatus) IsStop() bool {
+	return s == stop
+}
+
+func (s TaskStatus) IsLast() bool {
+	return s == last
+}
+
+func (s TaskStatus) IsSkip() bool {
+	return s == skip
+}
+
+func (s TaskStatus) IsRunAgain() bool {
+	return s == runAgain
+}
+
+const (
+	stop TaskStatus = iota
+	last
+	skip
+	runAgain
+)
+
 type TaskId uint64
 
 type task struct {
@@ -20,19 +45,18 @@ type task struct {
 	times    int32 //-1:no limit >=1:run times
 	async    bool
 	pool     bool
-	stop     bool
 	run      bool
 }
 
-func (t *task) Stop() (hasRun bool) {
+func (t *task) Stop(id TaskId) (hasRun bool) {
 	t.mut.Lock()
-	if t.id == 0 {
+	if t.id != id {
 		// May be recycled, which means it has been run. also it recycled before run,
 		// this only occurs when stop is called multiple times.
 		t.mut.Unlock()
 		return true
 	}
-	t.stop = true
+	t.times = 0
 	hasRun = t.run
 	t.mut.Unlock()
 	return
@@ -41,40 +65,37 @@ func (t *task) Stop() (hasRun bool) {
 func (t *task) Reset() {
 	t.mut.Lock()
 	t.id = 0
-	t.circle = 0
-	t.callback = nil
-	t.times = 0
-	t.async = false
-	t.pool = false
-	t.stop = false
 	t.run = false
 	t.mut.Unlock()
 }
 
-// Cannot be called concurrently
-func (t *task) Run() (gc bool) {
-	if t.circle > 0 {
-		t.circle--
-		return
-	}
+func (t *task) PrepareRun() TaskStatus {
+	var times int32
 
 	t.mut.Lock()
-	if t.stop {
+
+	if t.times == 0 {
 		t.mut.Unlock()
-		return true
+		return stop
 	}
+
+	if t.circle > 0 {
+		t.circle--
+		t.mut.Unlock()
+		return skip
+	}
+
 	t.run = true
-	t.mut.Unlock()
-
-	if t.async {
-		go t.callback()
-	} else {
-		t.callback()
-	}
-
 	if t.times > 0 {
 		t.times--
 	}
+	times = t.times
 
-	return true
+	t.mut.Unlock()
+
+	if times == 0 {
+		return last
+	}
+
+	return runAgain
 }

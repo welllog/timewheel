@@ -1,6 +1,7 @@
 package timewheel
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -123,6 +124,12 @@ func TestTimeWheel_NewTimer(t *testing.T) {
 	case <-time.After(460 * time.Millisecond):
 		if !timer.Stop() {
 			t.Error("run ahead")
+			return
+		}
+		select {
+		case <-timer.C:
+			t.Error("timer stop return ok, but timer.C has value")
+		case <-time.After(200 * time.Millisecond):
 		}
 	}
 }
@@ -255,4 +262,23 @@ func checkTime(t *testing.T, start, end time.Time, min, max time.Duration) {
 	if interval >= max {
 		t.Error("delay run")
 	}
+}
+
+func TestTicker(t *testing.T) {
+	tw := NewTimeWheel(100*time.Millisecond, 50)
+	tw.Start()
+	defer tw.Stop()
+
+	start := time.Now()
+
+	ticker := tw.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	tw.Sleep(3 * time.Second)
+	<-ticker.C
+	fmt.Println(time.Now().Sub(start).Seconds())
+	<-ticker.C
+	fmt.Println(time.Now().Sub(start).Seconds())
+	<-ticker.C
+	fmt.Println(time.Now().Sub(start).Seconds())
 }
