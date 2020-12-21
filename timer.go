@@ -1,17 +1,20 @@
 package timewheel
 
-import "time"
+import (
+	"github.com/welllog/timewheel/timing"
+	"time"
+)
 
 type Timer struct {
 	C      <-chan struct{}
 	recv   chan<- struct{}
-	taskid TaskId
 	fn     func()
-	tw     *TimeWheel
+	timing timing.Timing
+	timer  timing.Timer
 }
 
 func (t *Timer) Stop() bool {
-	return !t.tw.RemoveAndHasRun(t.taskid)
+	return t.timer.Stop()
 }
 
 // 	if !t.Stop() {
@@ -20,14 +23,14 @@ func (t *Timer) Stop() bool {
 // 	t.Reset(d)
 func (t *Timer) Reset(d time.Duration) {
 	if t.fn != nil {
-		t.taskid = t.tw.addTask(d, func() {
+		t.timer = t.timing.AddTask(d, func() {
 			t.fn()
 			t.recv <- struct{}{}
-		}, 1, true)
+		})
 		return
 	}
 
-	t.taskid = t.tw.addTask(d, func() {
+	t.timer = t.timing.AddTask(d, func() {
 		t.recv <- struct{}{}
-	}, 1, true)
+	})
 }
