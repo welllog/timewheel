@@ -9,11 +9,15 @@ type timer struct {
 	expiration int64
 	state      int32
 	task       func()
-	elem       *elem  // 记录一下所属节点，切换时间轮时不用再次分配节点
+	next       *timer
 }
 
 func (t *timer) Stop() bool {
 	return atomic.SwapInt32(&t.state, 1) == 0
+}
+
+func (t *timer) Next() *timer {
+	return t.next
 }
 
 func (t *timer) run(wrapper *timing.WaitGroupWrapper) bool {

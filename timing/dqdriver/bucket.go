@@ -8,17 +8,8 @@ import (
 type bucket struct {
 	expiration int64
 	mu         sync.Mutex
-	root       elem
-	last       *elem
-}
-
-type elem struct {
-	value *timer
-	next  *elem
-}
-
-func (e *elem) Next() *elem {
-	return e.next
+	root       timer
+	last       *timer
 }
 
 func newBucket() *bucket {
@@ -27,11 +18,6 @@ func newBucket() *bucket {
 	}
 	b.last = &b.root
 	return b
-}
-
-func (b *bucket) push(e *elem) {
-	b.last.next = e
-	b.last = e
 }
 
 func (b *bucket) removeFirst() {
@@ -46,7 +32,7 @@ func (b *bucket) removeFirst() {
 	}
 }
 
-func (b *bucket) Front() *elem {
+func (b *bucket) Front() *timer {
 	return b.root.next
 }
 
@@ -60,14 +46,9 @@ func (b *bucket) SetExpiration(expiration int64) bool {
 
 func (b *bucket) Add(t *timer) {
 	b.mu.Lock()
-
-	if t.elem == nil {
-		t.elem = &elem{
-			value: t,
-		}
-	}
-
-	b.push(t.elem)
+	
+	b.last.next = t
+	b.last = t
 
 	b.mu.Unlock()
 }
@@ -76,16 +57,16 @@ func (b *bucket) Flush(reinsert func(*timer)) {
 	var ts []*timer
 
 	b.mu.Lock()
-	for e := b.Front(); e != nil; {
-		next := e.Next()
+	for t := b.Front(); t != nil; {
+		next := t.Next()
 
 		b.removeFirst()
 
-		if !e.value.isStop() {
-			ts = append(ts, e.value)
+		if !t.isStop() {
+			ts = append(ts, t)
 		}
 
-		e = next
+		t = next
 	}
 	b.mu.Unlock()
 
