@@ -112,8 +112,8 @@ func (tw *timingWheel) Start() {
 			select {
 			case elem := <-ch:
 				b := elem.(*bucket)
-				b.Flush(tw.addOrRun)
 				tw.advanceClock(b.Expiration())
+				b.Flush(tw.addOrRun)
 			case <-tw.exitC:
 				cancel()
 				return

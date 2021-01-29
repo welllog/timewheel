@@ -68,9 +68,9 @@ func (b *bucket) Flush(reinsert func(*timer)) {
 
 		t = next
 	}
+	b.SetExpiration(-1)
 	b.mu.Unlock()
 
-	b.SetExpiration(-1)
 	for _, t := range ts {
 		reinsert(t)
 	}
