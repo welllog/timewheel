@@ -65,7 +65,7 @@ func (tw *timingWheel) add(t *timer) bool {
 		if overflowWheel == nil {
 			if atomic.CompareAndSwapInt32(
 				&tw.set, 0, 1) {
-				
+
 				overflowWheel = unsafe.Pointer(newTimingWheel(tw.interval, tw.slotNum, curTime, tw.queue))
 				atomic.StorePointer(&tw.overflowWheel, overflowWheel)
 			} else {
