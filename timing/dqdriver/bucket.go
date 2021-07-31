@@ -46,7 +46,7 @@ func (b *bucket) SetExpiration(expiration int64) bool {
 
 func (b *bucket) Add(t *timer) {
 	b.mu.Lock()
-	
+
 	b.last.next = t
 	b.last = t
 

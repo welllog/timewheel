@@ -1,8 +1,9 @@
 package timewheel
 
 import (
-	"github.com/welllog/timewheel/timing"
 	"time"
+
+	"github.com/welllog/timewheel/timing"
 )
 
 type Timer struct {

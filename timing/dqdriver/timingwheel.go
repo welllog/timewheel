@@ -2,10 +2,11 @@ package dqdriver
 
 import (
 	"context"
-	"github.com/welllog/timewheel/timing"
 	"sync/atomic"
 	"time"
 	"unsafe"
+
+	"github.com/welllog/timewheel/timing"
 )
 
 type timingWheel struct {
@@ -144,7 +145,7 @@ func (tw *timingWheel) ScheduleTask(s timing.Scheduler, task func()) timing.Time
 	t.expiration = expiration.UnixNano()
 	t.task = func() {
 		task()
-		
+
 		nexpiration := s.Next(time.Now())
 		if !nexpiration.IsZero() && t.resetState() {
 			t.expiration = nexpiration.UnixNano()

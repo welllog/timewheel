@@ -1,8 +1,9 @@
 package dqdriver
 
 import (
-	"github.com/welllog/timewheel/timing"
 	"sync/atomic"
+
+	"github.com/welllog/timewheel/timing"
 )
 
 type timer struct {

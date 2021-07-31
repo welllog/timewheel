@@ -1,9 +1,10 @@
 package timewheel
 
 import (
-	"github.com/welllog/timewheel/timing/dqdriver"
 	"testing"
 	"time"
+
+	"github.com/welllog/timewheel/timing/dqdriver"
 )
 
 func genD(i int) time.Duration {
@@ -13,7 +14,7 @@ func genD(i int) time.Duration {
 func BenchmarkDqTimingWheel_StartStop(b *testing.B) {
 	tw := dqdriver.NewTimingWheel(time.Millisecond, 50)
 	defer tw.Stop()
-	
+
 	cases := []struct {
 		name string
 		N    int // the data size (i.e. number of existing timers)
@@ -25,19 +26,19 @@ func BenchmarkDqTimingWheel_StartStop(b *testing.B) {
 	for _, c := range cases {
 		b.Run(c.name, func(b *testing.B) {
 			for i := 0; i < c.N; i++ {
-				tw.AddTask(genD(i), func(){})
+				tw.AddTask(genD(i), func() {})
 			}
 			b.ResetTimer()
-			
+
 			b.RunParallel(func(pb *testing.PB) {
 				for pb.Next() {
-					tw.AddTask(time.Second, func(){}).Stop()
+					tw.AddTask(time.Second, func() {}).Stop()
 				}
 			})
 			//for i := 0; i < b.N; i++ {
 			//	tw.AddTask(time.Second, func(){}).Stop()
 			//}
-			
+
 			b.StopTimer()
 		})
 	}
@@ -58,7 +59,7 @@ func BenchmarkTimingWheel_StartStop(b *testing.B) {
 	for _, c := range cases {
 		b.Run(c.name, func(b *testing.B) {
 			for i := 0; i < c.N; i++ {
-				Timing.AddTask(genD(i), func(){})
+				Timing.AddTask(genD(i), func() {})
 			}
 			b.ResetTimer()
 
@@ -67,7 +68,7 @@ func BenchmarkTimingWheel_StartStop(b *testing.B) {
 			//}
 			b.RunParallel(func(pb *testing.PB) {
 				for pb.Next() {
-					Timing.AddTask(time.Second, func(){}).Stop()
+					Timing.AddTask(time.Second, func() {}).Stop()
 				}
 			})
 

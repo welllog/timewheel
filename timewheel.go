@@ -1,10 +1,11 @@
 package timewheel
 
 import (
-	"github.com/welllog/timewheel/timing"
-	"github.com/welllog/timewheel/timing/dqdriver"
 	"sync"
 	"time"
+
+	"github.com/welllog/timewheel/timing"
+	"github.com/welllog/timewheel/timing/dqdriver"
 )
 
 type DRIVER string

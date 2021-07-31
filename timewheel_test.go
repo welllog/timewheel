@@ -18,7 +18,7 @@ func TestTimeWheel_NewTimer(t *testing.T) {
 	case <-time.After(1120 * time.Millisecond):
 		t.Error("delay run")
 	case <-timer.C:
-		if time.Now().Sub(start) < 980 * time.Millisecond {
+		if time.Now().Sub(start) < 980*time.Millisecond {
 			t.Error("run ahead")
 		}
 	}
