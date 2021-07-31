@@ -16,6 +16,7 @@ type timingWheel struct {
 	curTime       int64
 	slots         []*bucket
 	queue         timing.DelayQueue
+	set           int32
 	overflowWheel unsafe.Pointer
 	exitC         chan struct{}
 	waitGroup     timing.WaitGroupWrapper
@@ -62,12 +63,20 @@ func (tw *timingWheel) add(t *timer) bool {
 	} else {
 		overflowWheel := atomic.LoadPointer(&tw.overflowWheel)
 		if overflowWheel == nil {
-			atomic.CompareAndSwapPointer(
-				&tw.overflowWheel,
-				nil,
-				unsafe.Pointer(newTimingWheel(tw.interval, tw.slotNum, curTime, tw.queue)),
-			)
-			overflowWheel = atomic.LoadPointer(&tw.overflowWheel)
+			if atomic.CompareAndSwapInt32(
+				&tw.set, 0, 1) {
+				
+				overflowWheel = unsafe.Pointer(newTimingWheel(tw.interval, tw.slotNum, curTime, tw.queue))
+				atomic.StorePointer(&tw.overflowWheel, overflowWheel)
+			} else {
+				for {
+					overflowWheel = atomic.LoadPointer(&tw.overflowWheel)
+					if overflowWheel != nil {
+						break
+					}
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
 		}
 		return (*timingWheel)(overflowWheel).add(t)
 	}
